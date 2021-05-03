@@ -1,0 +1,23 @@
+{
+  "name": "ig-user-scrapper",
+  "version": "1.0.0",
+  "description": "Node.js/Puppeteer scraper managing watching users on Instagram.com",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/uelel/ig-user-scrapper.git"
+  },
+  "author": "Uelel",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/uelel/ig-user-scrapper/issues"
+  },
+  "homepage": "https://github.com/uelel/ig-user-scrapper#readme",
+  "dependencies": {
+    "argparse": "^2.0.1",
+    "puppeteer": "^9.0.0"
+  }
+}
