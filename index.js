@@ -63,16 +63,28 @@ class Worker {
         //console.log(this.totalFol)
 
         // Open dialog with followers
+        // Return followers box element
         await this.page.$eval(this.sel.followersButton,
                               el => el.click())
-        await this.page.waitForNavigation({ waitUntil: 'networkidle0' })
-
+        try {
+            await this.page.waitForXPath(this.sel.followersDiv+"//ul",
+                                         { visible: true,
+                                           timeout: 10000 })
+        } catch (err) {
+            throw new Error("List with followers was not found in page DOM!\n", err)
+        }
+        return (await this.page.$x(this.sel.followersDiv))[0]
     }
     
     async run() {
         await this.openPage()
-        await this.loadProfile()
-
+        const folBox = await this.loadProfile()
+        //console.log(box)
+        //await this.page.waitForTimeout(3000)
+        var [ lst ] = await folBox.$x(".//ul")
+        //console.log(lst)
+        var rows = await lst.$x("//li")
+        console.log(rows.length)
         // check there are unread rows in list of followers
         // if there are some -> read them
         // if there are none -> load more rows
