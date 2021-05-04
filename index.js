@@ -57,23 +57,20 @@ class Worker {
                                               (el) => { return el.innerHTML })
                         .catch((err) => { 
                             throw new Error("Followers button was not found:\n", err)
-
                         })
         this.totalFol = await this.parseNumber(this.totalFol)
         //console.log(this.totalFol)
 
         // Open dialog with followers
-        // Return followers box element
         await this.page.$eval(this.sel.followersButton,
                               el => el.click())
         try {
-            await this.page.waitForXPath(this.sel.followersDiv+"//ul",
-                                         { visible: true,
-                                           timeout: 10000 })
+            await this.page.waitForSelector(this.sel.followersDiv+" ul",
+                                            { visible: true,
+                                              timeout: 10000 })
         } catch (err) {
             throw new Error("List with followers was not found in page DOM!\n", err)
         }
-        return (await this.page.$x(this.sel.followersDiv))[0]
     }
 
     // Check whether given page with Instagram account is private
@@ -84,15 +81,20 @@ class Worker {
         else return false
     }
 
-    async checkAccount(li) {
-        const [ a ] = await li.$x(".//a")
+    // Get Instagram account from given li element handle
+    // Open account in new tab
+    // Check whether account is private or not
+    //
+    async processAccount(li) {
+        const [ a ] = await li.$$(" a")
         if (a) {
+            // Get profile name
             const profileName = await this.page.evaluate(el => el.getAttribute('href'), a)
-            //const link = await this.page.evaluate(el => el.innerHTML, a)
-            //console.log(profileName)
+            // Open profile in new tab
             const page = await this.browser.newPage()
             await page.goto("https://www.instagram.com"+profileName,
                             { waitUntil: 'networkidle0' })
+            // 
             if (!(await this.checkPrivateAccount(page))) {
                 console.log(profileName)                
             }
@@ -100,23 +102,36 @@ class Worker {
         } else {
             throw new Error("Profile name could not be found in given handle!\n")
         }
+        this.folIter += 1
+    }
+
+    // Search page DOM
+    // Return array with li elements containing links to followers
+    async loadFolLst() {
+        const [ folBox ] = await this.page.$$(this.sel.followersDiv)
+        return await folBox.$$(" ul li")
+    }
+
+    async folLoader() {
+        this.folIter = 0
+        var rows = await this.loadFolLst()
+        while (rows.length < this.totalFol-1) {
+            // Process new rows
+            while (this.folIter < rows.length-1) {
+                await this.processAccount(rows[this.folIter])
+            }
+            // Scroll down the list in case all rows are processed
+            await this.page.evaluate(
+                el => el.scrollIntoView(true),
+                rows[this.folIter-1])
+            rows = await this.loadFolLst()
+        }
     }
 
     async run() {
         await this.openPage()
-        const folBox = await this.loadProfile()
-        var [ folLst ] = await folBox.$x(".//ul")
-        //console.log(await this.page.evaluate(el => el.innerHTML, folLst))
-        var rows = await folLst.$x(".//li")
-        //console.log(rows.length)
-        //console.log(await this.page.evaluate(el => el.innerHTML, rows[0]))
-        await this.checkAccount(rows[0])
-        // check there are unread rows in list of followers
-        // if there are some -> read them
-        // if there are none -> load more rows
-        // stop if no rows = this.totalFol
-        //
-        //await this.browser.close()
+        await this.loadProfile()
+        await this.folLoader()
     }
 
     constructor(url,
@@ -136,8 +151,7 @@ class Worker {
             passwordField: '#loginForm > div > div:nth-child(2) > div > label > input',
             loginButton: '#loginForm > div > div:nth-child(3) > button',
             followersButton: '#react-root > section > main > div > header > section > ul > li:nth-child(2) > a > span',
-            followersDiv: "//div[@role='dialog']/div/div[2]",
-            followersList: "//div[@role='dialog']//ul"
+            followersDiv: "div[role=dialog] > div > div:nth-of-type(2)",
         }
 
         // options for puppeteer.launch method
