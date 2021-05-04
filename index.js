@@ -75,16 +75,42 @@ class Worker {
         }
         return (await this.page.$x(this.sel.followersDiv))[0]
     }
-    
+
+    // Check whether given page with Instagram account is private
+    // Return bool
+    async checkPrivateAccount(page) {
+        const [ res ] = await page.$x("//*[contains(text(), 'This Account is Private')]")
+        if (res) return true
+        else return false
+    }
+
+    async checkAccount(li) {
+        const [ a ] = await li.$x(".//a")
+        if (a) {
+            const profileName = await this.page.evaluate(el => el.getAttribute('href'), a)
+            //const link = await this.page.evaluate(el => el.innerHTML, a)
+            //console.log(profileName)
+            const page = await this.browser.newPage()
+            await page.goto("https://www.instagram.com"+profileName,
+                            { waitUntil: 'networkidle0' })
+            if (!(await this.checkPrivateAccount(page))) {
+                console.log(profileName)                
+            }
+            await page.close()
+        } else {
+            throw new Error("Profile name could not be found in given handle!\n")
+        }
+    }
+
     async run() {
         await this.openPage()
         const folBox = await this.loadProfile()
-        //console.log(box)
-        //await this.page.waitForTimeout(3000)
-        var [ lst ] = await folBox.$x(".//ul")
-        //console.log(lst)
-        var rows = await lst.$x("//li")
-        console.log(rows.length)
+        var [ folLst ] = await folBox.$x(".//ul")
+        //console.log(await this.page.evaluate(el => el.innerHTML, folLst))
+        var rows = await folLst.$x(".//li")
+        //console.log(rows.length)
+        //console.log(await this.page.evaluate(el => el.innerHTML, rows[0]))
+        await this.checkAccount(rows[0])
         // check there are unread rows in list of followers
         // if there are some -> read them
         // if there are none -> load more rows
@@ -132,6 +158,6 @@ class Worker {
 
 
 new Worker(url='https://www.instagram.com/accounts/login',
-           email='info@vkusov.cz',
-           password='moja21vkusnyashka',
+           email='ntrand@seznam.cz',
+           password='cqiS6JW!ND#CyB',
            profile='russian.shop.mozaika.prague')
