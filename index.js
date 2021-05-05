@@ -7,18 +7,16 @@ const { ArgumentParser } = require('argparse')
 class Worker {
 
     // Open browser
-    // Go to given url
     // Login to Instagram
     async openPage() {
 
         // Start browser
         this.browser = await puppeteer.launch(this.chromeOptions)
         this.page = await this.browser.newPage()
-        await this.page.goto(this.url, { waitUntil: 'networkidle0' })
+        await this.page.goto('https://www.instagram.com/accounts/login/',
+                             { waitUntil: 'networkidle0' })
 
         // Accept cookies
-        //var el = await this.page.$x(this.sel.acceptCookiesButton)
-        //await el[0].click()
         await this.page.evaluate(
             el => el.click(),
             (await this.page.$x(this.sel.acceptCookiesButton))[0]
@@ -35,6 +33,7 @@ class Worker {
     }
 
     // Parse given string number to float
+    // Return float
     async parseNumber(str) {
         try {
             return parseFloat(str.replace(/,/g, ''))
@@ -73,12 +72,32 @@ class Worker {
         }
     }
 
-    // Check whether given page with Instagram account is private
+    // Check whether given page with Instagram account is private or not
     // Return bool
     async checkPrivateAccount(page) {
         const [ res ] = await page.$x("//*[contains(text(), 'This Account is Private')]")
         if (res) return true
         else return false
+    }
+
+    // Append given string to file
+    async writeToFile(str) {
+        // remove slashes from string
+        var str = str.replace(/\//g, "")
+        try {
+            await fs.appendFile(this.fileName,
+                                str+"\n",
+                                err => { if (err) throw err })
+        } catch (err) {
+            throw new Error("Value "+str+" could not be written into file!\n", err)
+        }
+    }
+
+    // Print progress to stdout
+    printProgress() {
+        process.stdout.clearLine()
+        process.stdout.cursorTo(0) 
+        process.stdout.write('Progress: '+this.folIter+' from '+this.totalFol)
     }
 
     // Get Instagram account from given li element handle
@@ -96,12 +115,13 @@ class Worker {
                             { waitUntil: 'networkidle0' })
             // 
             if (!(await this.checkPrivateAccount(page))) {
-                console.log(profileName)                
+                await this.writeToFile(profileName)
             }
             await page.close()
         } else {
             throw new Error("Profile name could not be found in given handle!\n")
         }
+        this.printProgress() 
         this.folIter += 1
     }
 
@@ -112,6 +132,7 @@ class Worker {
         return await folBox.$$(" ul li")
     }
 
+    // Get list of followers
     async folLoader() {
         this.folIter = 0
         var rows = await this.loadFolLst()
@@ -129,20 +150,22 @@ class Worker {
     }
 
     async run() {
+        process.stdout.write('Scraping followers from Instagram profile: '+this.profile+'\n')
         await this.openPage()
         await this.loadProfile()
         await this.folLoader()
     }
 
-    constructor(url,
-                email,
+    constructor(email,
                 password,
-                profile) {
+                profile,
+                fileName) {
 
-        this.url = url
         this.email = email
         this.pwd = password
         this.profile = profile
+        this.fileName = fileName
+
 
         // DOM selectors
         this.sel = {
@@ -167,11 +190,11 @@ class Worker {
 
         this.run()
     }
-
 }
 
 
-new Worker(url='https://www.instagram.com/accounts/login',
-           email='ntrand@seznam.cz',
+// 851
+new Worker(email='ntrand@seznam.cz',
            password='cqiS6JW!ND#CyB',
-           profile='russian.shop.mozaika.prague')
+           profile='russian.shop.mozaika.prague',
+           fileName='followers')
