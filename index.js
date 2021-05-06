@@ -134,7 +134,7 @@ class Worker {
 
     // Get list of followers
     async folLoader() {
-        this.folIter = 0
+        this.folIter = this.startFrom
         var rows = await this.loadFolLst()
         while (rows.length < this.totalFol-1) {
             // Process new rows
@@ -149,21 +149,36 @@ class Worker {
         }
     }
 
+    // Rewind list of followers to n-th fol. specified by this.startFrom
+    async rewindFol() {
+        process.stdout.write('Scrolling down to '+this.startFrom+'-th profile\n')
+        var rows = await this.loadFolLst()
+        while (rows.length < this.startFrom) {
+            await this.page.evaluate(
+                el => el.scrollIntoView(true),
+                rows[rows.length-1])
+            rows = await this.loadFolLst()
+        }
+    }
+
     async run() {
         process.stdout.write('Scraping followers from Instagram profile: '+this.profile+'\n')
         await this.openPage()
         await this.loadProfile()
+        await this.rewindFol()
         await this.folLoader()
     }
 
     constructor(email,
                 password,
                 profile,
+                startFrom,
                 fileName) {
 
         this.email = email
         this.pwd = password
         this.profile = profile
+        this.startFrom = startFrom
         this.fileName = fileName
 
 
@@ -194,7 +209,8 @@ class Worker {
 
 
 // 851
-new Worker(email='ntrand@seznam.cz',
-           password='cqiS6JW!ND#CyB',
+new Worker(email='pedobip388@dghetian.com',
+           password='V@9yx83$Rkwo*p',
            profile='russian.shop.mozaika.prague',
+           startFrom=851,
            fileName='followers')
