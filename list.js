@@ -2,35 +2,10 @@ const fs = require('fs')
 const process = require('process')
 const puppeteer = require('puppeteer')
 const { ArgumentParser } = require('argparse')
+const Init = require('./init.js')
 
 
-class Worker {
-
-    // Open browser
-    // Login to Instagram
-    async openPage() {
-
-        // Start browser
-        this.browser = await puppeteer.launch(this.chromeOptions)
-        this.page = await this.browser.newPage()
-        await this.page.goto('https://www.instagram.com/accounts/login/',
-                             { waitUntil: 'networkidle0' })
-
-        // Accept cookies
-        await this.page.evaluate(
-            el => el.click(),
-            (await this.page.$x(this.sel.acceptCookiesButton))[0]
-        )
-
-        // Login to Instagram
-        await this.page.focus(this.sel.usernameField)
-        await this.page.keyboard.type(this.email)
-        await this.page.focus(this.sel.passwordField)
-        await this.page.keyboard.type(this.pwd)
-        await this.page.focus(this.sel.loginButton)
-        await this.page.keyboard.type('\n')
-        await this.page.waitForNavigation({ waitUntil: 'networkidle0' })
-    }
+class FollowersList extends Init {
 
     // Parse given string number to float
     // Return float
@@ -53,8 +28,8 @@ class Worker {
 
         // Get number of followers
         this.totalFol = await this.page.$eval(this.sel.followersButton,
-                                              (el) => { return el.innerHTML })
-                        .catch((err) => { 
+                                              el => { return el.innerHTML })
+                        .catch(err => { 
                             throw new Error("Followers button was not found:\n", err)
                         })
         this.totalFol = await this.parseNumber(this.totalFol)
@@ -110,10 +85,8 @@ class Worker {
             // Get profile name
             const profileName = await this.page.evaluate(el => el.getAttribute('href'), a)
             // Open profile in new tab
-            const page = await this.browser.newPage()
-            await page.goto("https://www.instagram.com"+profileName,
-                            { waitUntil: 'networkidle0' })
-            // 
+            const page = this.OpenPage("https://www.instagram.com"+profileName)
+            // Write name in case account is not private
             if (!(await this.checkPrivateAccount(page))) {
                 await this.writeToFile(profileName)
             }
@@ -163,7 +136,6 @@ class Worker {
 
     async run() {
         process.stdout.write('Scraping followers from Instagram profile: '+this.profile+'\n')
-        await this.openPage()
         await this.loadProfile()
         await this.rewindFol()
         await this.folLoader()
@@ -175,33 +147,18 @@ class Worker {
                 startFrom,
                 fileName) {
 
-        this.email = email
-        this.pwd = password
+        super(email, password)
+        
         this.profile = profile
         this.startFrom = startFrom
         this.fileName = fileName
 
 
         // DOM selectors
-        this.sel = {
-            acceptCookiesButton: '//button[text()="Accept All"]',
-            usernameField: '#loginForm > div > div:nth-child(1) > div > label > input',
-            passwordField: '#loginForm > div > div:nth-child(2) > div > label > input',
-            loginButton: '#loginForm > div > div:nth-child(3) > button',
+        this.sel.push({
             followersButton: '#react-root > section > main > div > header > section > ul > li:nth-child(2) > a > span',
             followersDiv: "div[role=dialog] > div > div:nth-of-type(2)",
-        }
-
-        // options for puppeteer.launch method
-        this.chromeOptions = {
-            headless: false,
-            defaultViewport: {
-                width: 960,
-                height: 900
-            },
-            slowMo: 0,
-            args: []
-        }
+        })
 
         this.run()
     }
