@@ -2,17 +2,21 @@ const process = require('process')
 const puppeteer = require('puppeteer')
 
 
-class Init {
+class Login {
 
-    // Open page in new tab
-    // Return page object
+    /**
+     * Open page in new tab
+     * @return {page object}
+     */
     async OpenPage(url) {
         const page = await this.browser.newPage()
         await page.goto(url, { waitUntil: 'networkidle0' })
         return page
     }
 
-    // Accept cookies on Instagram
+    /**
+     * Accept cookies on Instagram
+     */
     async AcceptCookies() {
         await this.page.evaluate(
             el => el.click(),
@@ -20,7 +24,9 @@ class Init {
         )
     }
 
-    // Login to Instagram
+    /**
+     * Login to Instagram
+     */
     async Login() {
         await this.page.focus(this.sel.usernameField)
         await this.page.keyboard.type(this.email)
@@ -31,7 +37,7 @@ class Init {
         await this.page.waitForNavigation({ waitUntil: 'networkidle0' })
     }
 
-    async run() {
+    async Init() {
         // Start browser
         this.browser = await puppeteer.launch(this.chromeOptions)
 
@@ -41,6 +47,13 @@ class Init {
         await this.Login()
     }
 
+    /**
+     * Launch Puppeteer
+     * Login to Instagram with given account
+     *
+     * @param {str} email - email to use for login into Instagram
+     * @param {str} password - password to use for login into Instagram
+     */
     constructor(email,
                 password) {
 
@@ -65,10 +78,7 @@ class Init {
             slowMo: 0,
             args: []
         }
-
-        this.run()
     }
-
 }
 
-module.exports = Init
+module.exports = Login

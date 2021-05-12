@@ -2,25 +2,29 @@ const fs = require('fs')
 const process = require('process')
 const puppeteer = require('puppeteer')
 const { ArgumentParser } = require('argparse')
-const Init = require('./init.js')
+const Login = require('./login.js')
 
 
-class FollowersList extends Init {
+class FollowersList extends Login {
 
-    // Parse given string number to float
-    // Return float
-    async parseNumber(str) {
+    /**
+     * Parse given string number to float
+     * @return {float}
+     */
+    async ParseNumber(str) {
         try {
             return parseFloat(str.replace(/,/g, ''))
         } catch (err) {
-            throw new Error("Number of followers could not be parsed!\n", err)
+            throw new Error("Number "+str+" could not be parsed!\n", err)
         }
     }
 
-    // Open profile page
-    // Get number of followers
-    // Open dialog with followers
-    async loadProfile() {
+    /**
+     * Open profile page
+     * Get number of followers
+     * Open dialog with followers
+     */
+    async LoadProfile() {
 
         // Load profile page
         await this.page.goto('https://www.instagram.com/'+this.profile,
@@ -32,7 +36,7 @@ class FollowersList extends Init {
                         .catch(err => { 
                             throw new Error("Followers button was not found:\n", err)
                         })
-        this.totalFol = await this.parseNumber(this.totalFol)
+        this.totalFol = await this.ParseNumber(this.totalFol)
         //console.log(this.totalFol)
 
         // Open dialog with followers
@@ -47,16 +51,20 @@ class FollowersList extends Init {
         }
     }
 
-    // Check whether given page with Instagram account is private or not
-    // Return bool
-    async checkPrivateAccount(page) {
+    /**
+     * Check whether given page with Instagram account is private or not
+     * @return {bool}
+     */
+    async CheckPrivateAccount(page) {
         const [ res ] = await page.$x("//*[contains(text(), 'This Account is Private')]")
         if (res) return true
         else return false
     }
 
-    // Append given string to file
-    async writeToFile(str) {
+    /**
+     * Append given string to file
+     */
+    async WriteToFile(str) {
         // remove slashes from string
         var str = str.replace(/\//g, "")
         try {
@@ -68,79 +76,100 @@ class FollowersList extends Init {
         }
     }
 
-    // Print progress to stdout
-    printProgress() {
+    /**
+     * Print progress to stdout
+     */
+    PrintProgress() {
         process.stdout.clearLine()
         process.stdout.cursorTo(0) 
         process.stdout.write('Progress: '+this.folIter+' from '+this.totalFol)
     }
 
-    // Get Instagram account from given li element handle
-    // Open account in new tab
-    // Check whether account is private or not
-    //
-    async processAccount(li) {
+    /**
+     * Get Instagram account from given li element handle
+     * Open account in new tab
+     * Check whether account is private or not
+     */
+    async ProcessAccount(li) {
         const [ a ] = await li.$$(" a")
         if (a) {
             // Get profile name
             const profileName = await this.page.evaluate(el => el.getAttribute('href'), a)
             // Open profile in new tab
-            const page = this.OpenPage("https://www.instagram.com"+profileName)
+            const page = await this.OpenPage("https://www.instagram.com"+profileName)
             // Write name in case account is not private
-            if (!(await this.checkPrivateAccount(page))) {
-                await this.writeToFile(profileName)
+            if (!(await this.CheckPrivateAccount(page))) {
+                await this.WriteToFile(profileName)
             }
             await page.close()
         } else {
             throw new Error("Profile name could not be found in given handle!\n")
         }
-        this.printProgress() 
+        this.PrintProgress() 
         this.folIter += 1
     }
 
-    // Search page DOM
-    // Return array with li elements containing links to followers
-    async loadFolLst() {
+    /**
+     * Search page DOM
+     * @return {array} Array with li elements containing links to followers
+     */
+    async LoadFolLst() {
         const [ folBox ] = await this.page.$$(this.sel.followersDiv)
         return await folBox.$$(" ul li")
     }
 
-    // Get list of followers
-    async folLoader() {
+    /**
+     * Logic to get list of followers
+     */
+    async FolLoader() {
         this.folIter = this.startFrom
-        var rows = await this.loadFolLst()
+        var rows = await this.LoadFolLst()
         while (rows.length < this.totalFol-1) {
             // Process new rows
             while (this.folIter < rows.length-1) {
-                await this.processAccount(rows[this.folIter])
+                await this.ProcessAccount(rows[this.folIter])
             }
             // Scroll down the list in case all rows are processed
             await this.page.evaluate(
                 el => el.scrollIntoView(true),
                 rows[this.folIter-1])
-            rows = await this.loadFolLst()
+            rows = await this.LoadFolLst()
         }
     }
 
-    // Rewind list of followers to n-th fol. specified by this.startFrom
-    async rewindFol() {
+    /**
+     * Rewind list of followers to n-th fol. specified by this.startFrom parameter
+     */
+    async RewindFol() {
         process.stdout.write('Scrolling down to '+this.startFrom+'-th profile\n')
-        var rows = await this.loadFolLst()
+        var rows = await this.LoadFolLst()
         while (rows.length < this.startFrom) {
             await this.page.evaluate(
                 el => el.scrollIntoView(true),
                 rows[rows.length-1])
-            rows = await this.loadFolLst()
+            rows = await this.LoadFolLst()
         }
     }
 
-    async run() {
-        process.stdout.write('Scraping followers from Instagram profile: '+this.profile+'\n')
-        await this.loadProfile()
-        await this.rewindFol()
-        await this.folLoader()
-    }
+    async Init() {
+        await super.Init()
 
+        process.stdout.write('Scraping followers from Instagram profile: '+this.profile+'\n')
+        await this.LoadProfile()
+        await this.RewindFol()
+        await this.FolLoader()
+    }
+    
+    /**
+     * Download list with profile names of followers of given Instagram profile
+     * Download only profiles that have open account (not private)
+     *
+     * @param {str} email - email to use for login into Instagram
+     * @param {str} password - password to use for login into Instagram
+     * @param {str} profile - profile name to download followers from
+     * @param {number} startFrom - first follower to download
+     * @param {str} fileName - file name to save resulting list
+     */
     constructor(email,
                 password,
                 profile,
@@ -155,19 +184,16 @@ class FollowersList extends Init {
 
 
         // DOM selectors
-        this.sel.push({
-            followersButton: '#react-root > section > main > div > header > section > ul > li:nth-child(2) > a > span',
-            followersDiv: "div[role=dialog] > div > div:nth-of-type(2)",
-        })
-
-        this.run()
+        this.sel.followersButton = '#react-root > section > main > div > header > section > ul > li:nth-child(2) > a > span'
+        this.sel.followersDiv = "div[role=dialog] > div > div:nth-of-type(2)"
     }
 }
 
 
 // 851
-new Worker(email='pedobip388@dghetian.com',
-           password='V@9yx83$Rkwo*p',
-           profile='russian.shop.mozaika.prague',
-           startFrom=851,
-           fileName='followers')
+const w = new FollowersList(email='pedobip388@dghetian.com',
+                            password='V@9yx83$Rkwo*p',
+                            profile='russian.shop.mozaika.prague',
+                            startFrom=0,
+                            fileName='followers2')
+w.Init()
