@@ -53,6 +53,7 @@ class FollowersList extends Login {
 
     /**
      * Check whether given page with Instagram account is private or not
+     * @param {page object}
      * @return {bool}
      */
     async CheckPrivateAccount(page) {
