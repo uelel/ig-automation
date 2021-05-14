@@ -13,6 +13,16 @@ class Login {
         await page.goto(url, { waitUntil: 'networkidle0' })
         return page
     }
+    
+    /**
+     * Sleep for given time of ms
+     * @param {int} ms
+     */
+    async Sleep(ms) {
+       return new Promise((res) => { 
+           setTimeout(res, ms)
+       })
+    }
 
     /**
      * Accept cookies on Instagram
@@ -45,6 +55,10 @@ class Login {
         this.page = await this.OpenPage('https://www.instagram.com/accounts/login/')
         await this.AcceptCookies()
         await this.Login()
+    }
+
+    async Close() {
+        await this.browser.close()
     }
 
     /**

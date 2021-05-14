@@ -159,6 +159,8 @@ class FollowersList extends Login {
         await this.LoadProfile()
         await this.RewindFol()
         await this.FolLoader()
+
+        await this.Close()
     }
     
     /**

@@ -25,27 +25,12 @@ class LikePhotos extends Login {
     /**
      * Select random item from given array
      * @param {array}
+     * @param {int} - if given, only first N items of array are processed
      * @return {object} item
      */
-    async SelectRandomItem(array) {
+    async SelectRandomItem(array,N=null) {
+        if (N) { var array = array.slice(0,N-1) }
         return array[Math.floor(Math.random() * array.length)]
-    }
-
-    /**
-     * Select random profile from this.profileList
-     * @return {string} profile name
-     */
-    async SelectRandomProfile() {
-        return await this.SelectRandomItem(this.profileList)
-    }
-
-    /**
-     * Select random element from given list of elements
-     * Use only first N elements for the choice
-     * @return {element handle}
-     */
-    async SelectRandomEl(array,N) {
-        return await this.SelectRandomItem(array.slice(0,N-1))
     }
     
     /**
@@ -62,43 +47,66 @@ class LikePhotos extends Login {
     /**
      * Search page DOM
      * @param {page object}
-     * @return {array} Array with div elements containing profile images
+     * @return {array} Array with div elements containing images
      */
     async LoadImages(page) {
         const [ div ] = await page.$$(this.sel.imagesDiv)
         return await div.$$("div > div")
     }
 
-    async selectPhoto() {
-
-    }
-
-    async likePhoto() {
-
+    /**
+     * Logic to like photos
+     */
+    async Like() {
+        await this.LoadProfiles()
+        // Loop over profiles
+        for (let i=0; i<this.noProfiles; i++) {
+            // Select and open profile
+            var profileName = await this.SelectRandomItem(this.profileList)
+            process.stdout.write(profileName+'\n')
+            var page = await this.OpenPage("https://www.instagram.com/"+profileName)
+            // Check whether account is not empty
+            if (!(await this.CheckEmptyAccount(page))) {
+                var imgArray = await this.LoadImages(page)
+                // Loop over likes
+                for (let j=0; j<this.likesPerProfile; j++) {
+                    // Select image to like
+                    var img = await this.SelectRandomItem(imgArray, 3)
+                    // Open image
+                    await img.click()
+                    // Wait until like button appears
+                    try {
+                        await page.waitForSelector(this.sel.likeButton,
+                                                   { visible: true,
+                                                     timeout: 10000 })
+                    } catch (err) {
+                        throw new Error("Like button was not found in page DOM!\n", err)
+                    }
+                    // Click like button
+                    await page.click(this.sel.likeButton)
+                    // Sleep
+                    await this.Sleep(this.sleepMs)
+                }
+            // Select new profile in case account is empty
+            } else {
+                i = i-1
+            }
+            await page.close()
+        }
     }
 
     async Init() {
         await super.Init()
 
-        process.stdout.write('Liking photos of '+this.noProfiles+' profiles from given list\n')
-        process.stdout.write('Each selected profile receives '+this.noLikesPerProfile+' likes\n')
-        await this.LoadProfiles()
+        process.stdout.write('Liking photos of ' +
+                             this.noProfiles +
+                             ' profiles from given list \"' +
+                             this.fileName + '\"\n')
+        process.stdout.write('Each selected profile receives '+this.likesPerProfile+' likes\n\n')
+        process.stdout.write('Selected profiles:\n')
+        await this.Like()
 
-        for (let i=0; i<1; i++) {
-            var profileName = await this.SelectRandomProfile()
-            var page = await this.OpenPage("https://www.instagram.com/"+profileName)
-            // Check whether account is empty
-            if (!(await this.CheckEmptyAccount(page))) {
-                var imgArray = await this.LoadImages(page)
-                console.log(imgArray.length)
-                var img = await this.SelectRandomEl(imgArray, 3)
-                console.log(img)
-                // Open image
-                await img.click()
-            }
-        }
-        //await this.RewindFol()
-        //await this.FolLoader()
+        await this.Close()
     }
 
     /**
@@ -108,30 +116,34 @@ class LikePhotos extends Login {
      * @param {str} password - password to use for login into Instagram
      * @param {str} fileName - file name with list of valid profiles
      * @param {number} noProfiles - how many profiles should be liked
-     * @param {number} noLikesPerProfile - how many photos to like per profile
+     * @param {number} likesPerProfile - how many photos to like per profile
      */
     constructor(email,
                 password,
                 fileName,
                 noProfiles,
-                noLikesPerProfile) {
+                likesPerProfile) {
 
         super(email, password)
         
         this.fileName = fileName
         this.noProfiles = noProfiles
-        this.noLikesPerProfile = noLikesPerProfile
+        this.likesPerProfile = likesPerProfile
 
 
         // DOM selectors
-        this.sel.imagesDiv = 'body article:first-child > div:nth-of-type(1) > div'
+        this.sel.imagesDiv = 'body article:first-child > div:nth-of-type(1) > div',
+        this.sel.likeButton = 'svg[aria-label=\"Like\"][width=\"24\"]'
+
+        // Sleep time between likes
+        this.sleepMs = 30000
     }
 }
 
 
 const w = new LikePhotos(email='pedobip388@dghetian.com',
                          password='V@9yx83$Rkwo*p',
-                         fileName='./followers1',
-                         noProfiles=10,
-                         noLikesPerProfile=1)
+                         fileName='./data/mozaika',
+                         noProfiles=15,
+                         likesPerProfile=1)
 w.Init()
