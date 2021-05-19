@@ -28,10 +28,14 @@ class Login {
      * Accept cookies on Instagram
      */
     async AcceptCookies() {
-        await this.page.evaluate(
-            el => el.click(),
-            (await this.page.$x(this.sel.acceptCookiesButton))[0]
-        )
+        try {
+            await this.page.evaluate(
+                el => el.click(),
+                (await this.page.$x(this.sel.acceptCookiesButton))[0]
+            )
+        } catch (err) {
+            process.stdout.write('Accept-cookies button was not found\n')
+        }
     }
 
     /**
@@ -52,7 +56,13 @@ class Login {
         this.browser = await puppeteer.launch(this.chromeOptions)
 
         process.stdout.write('Login to Instagram as : '+this.email+'\n')
+        
         this.page = await this.OpenPage('https://www.instagram.com/accounts/login/')
+        await this.page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) '+
+                                     'AppleWebKit/537.36 (KHTML, like Gecko) '+
+                                     'Chrome/74.0.3729.169 Safari/537.36')
+
+        //await this.page.screenshot({ path: 'login.png' })
         await this.AcceptCookies()
         await this.Login()
     }

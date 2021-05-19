@@ -18,6 +18,7 @@
   "homepage": "https://github.com/uelel/ig-user-scrapper#readme",
   "dependencies": {
     "argparse": "^2.0.1",
+    "date-and-time": "^1.0.0",
     "puppeteer": "^9.0.0"
   }
 }

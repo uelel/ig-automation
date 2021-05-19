@@ -1,6 +1,7 @@
 const fs = require('fs')
 const process = require('process')
 const puppeteer = require('puppeteer')
+const date = require('date-and-time')
 const { ArgumentParser } = require('argparse')
 const Login = require('./login.js')
 
@@ -50,8 +51,67 @@ class LikePhotos extends Login {
      * @return {array} Array with div elements containing images
      */
     async LoadImages(page) {
-        const [ div ] = await page.$$(this.sel.imagesDiv)
-        return await div.$$("div > div")
+        await this.Sleep(1000)
+        return await page.$$(this.sel.imagesDiv)
+    }
+
+    /**
+     * Combine given parent and child CSS selectors with given combinator
+     * @param {str} par - parent selector
+     * @param {str} comb - combinator between par and child
+     * @param {str} child - child selector
+     * @return {str} combined selector
+     */
+    async CSS(par,comb,child) {
+        return par+" "+comb+" "+child
+    }
+
+    /**
+     * Parse given string into Date object with defined format
+     * Compare parsed Date object against lastImgDt attribute
+     * @param {str} str
+     * @return {bool} True in case dt > lastImgDt, false otherwise
+     */
+    async CompareDt(str) {
+        const dt = await date.parse(str, 'YYYY-MM-DDTHH:mm:ss.SSS ')
+        if (dt > this.lastImgDt) return true
+        else return false
+    }
+
+    /**
+     * Check whether profile with given page and imgArray is actual
+     * Calls this.CompareDt to resolve
+     * @param {page object} page - with profile
+     * @param {array} imgArray - array with elements of profile images
+     * @return {bool} True in case account is actual, false otherwise
+     */
+    async CheckActualProfile(page, imgArray) {
+        if (imgArray.length > 0) {
+            // Open last added image
+            await imgArray[0].click()
+            // Wait for time element to appear
+            await page.waitForSelector(this.sel.selImgDiv+this.sel.imgDateTime,
+                                       { visible: true,
+                                         timeout: 10000 })
+            // Get datetime attribute
+            try {
+                const dt = await page.$eval(this.sel.selImgDiv+this.sel.imgDateTime,
+                                            el => el.getAttribute('datetime'))
+                //await this.Sleep(3000)
+                if (await this.CompareDt(dt)) {
+                    await page.click(this.sel.closeButton)
+                    return true
+                } else {
+                    await page.click(this.sel.closeButton)
+                    return false
+                }
+            } catch (err) {
+                await page.click(this.sel.closeButton)
+                return false
+            }
+        } else {
+            return false
+        }
     }
 
     /**
@@ -63,32 +123,47 @@ class LikePhotos extends Login {
         for (let i=0; i<this.noProfiles; i++) {
             // Select and open profile
             var profileName = await this.SelectRandomItem(this.profileList)
-            process.stdout.write(profileName+'\n')
+            //var profileName = 'kristina_nashe'
+            process.stdout.write(profileName)
             var page = await this.OpenPage("https://www.instagram.com/"+profileName)
             // Check whether account is not empty
             if (!(await this.CheckEmptyAccount(page))) {
                 var imgArray = await this.LoadImages(page)
-                // Loop over likes
-                for (let j=0; j<this.likesPerProfile; j++) {
-                    // Select image to like
-                    var img = await this.SelectRandomItem(imgArray, 3)
-                    // Open image
-                    await img.click()
-                    // Wait until like button appears
-                    try {
-                        await page.waitForSelector(this.sel.likeButton,
-                                                   { visible: true,
-                                                     timeout: 10000 })
-                    } catch (err) {
-                        throw new Error("Like button was not found in page DOM!\n", err)
+                // Check whether account is actual
+                if (await this.CheckActualProfile(page,imgArray)) {
+                    /*
+                    // Loop over likes
+                    for (let j=0; j<Math.min(this.likesPerProfile, imgArray.length); j++) {
+                        // Open image
+                        await imgArray[j].click()
+                        // Wait until like button appears
+                        try {
+                            await page.waitForSelector(await this.CSS(this.sel.selImgDiv,
+                                                                      ' ',
+                                                                      this.sel.likeButton),
+                                                       { visible: true,
+                                                         timeout: 10000 })
+                            // Click like button
+                            await page.click(await this.CSS(this.sel.selImgDiv,
+                                                            ' ',
+                                                            this.sel.likeButton))
+                            process.stdout.write(' .. done\n')
+                        } catch (err) {
+                            process.stdout.write(' .. like button was not found in page DOM\n')
+                            i = i-1
+                        }
+                        // Sleep
+                        await this.Sleep(this.sleepMs)
                     }
-                    // Click like button
-                    await page.click(this.sel.likeButton)
-                    // Sleep
-                    await this.Sleep(this.sleepMs)
+                    */
+                // Select new profile in case account is not actual
+                } else {
+                    process.stdout.write(' .. profile is not actual\n')
+                    i = i-1
                 }
             // Select new profile in case account is empty
             } else {
+                process.stdout.write(' .. profile is private\n')
                 i = i-1
             }
             await page.close()
@@ -106,7 +181,7 @@ class LikePhotos extends Login {
         process.stdout.write('Selected profiles:\n')
         await this.Like()
 
-        await this.Close()
+        //await this.Close()
     }
 
     /**
@@ -116,7 +191,7 @@ class LikePhotos extends Login {
      * @param {str} password - password to use for login into Instagram
      * @param {str} fileName - file name with list of valid profiles
      * @param {number} noProfiles - how many profiles should be liked
-     * @param {number} likesPerProfile - how many photos to like per profile
+     * @param {number} likesPerProfile - how many first photos to like per profile
      */
     constructor(email,
                 password,
@@ -132,18 +207,34 @@ class LikePhotos extends Login {
 
 
         // DOM selectors
-        this.sel.imagesDiv = 'body article:first-child > div:nth-of-type(1) > div',
-        this.sel.likeButton = 'svg[aria-label=\"Like\"][width=\"24\"]'
+        // Array with divs of images on profile page
+        // Parent body
+        this.sel.imagesDiv = 'body article:first-child > div:nth-of-type(1) > div > div > div'
+        // Article element with maximized image
+        // Parent body
+        this.sel.selImgDiv = 'body div[role=dialog] > article'
+        // Time element with datetime of maximized image
+        // Parent selImgDiv
+        this.sel.imgDateTime = ' > div:nth-of-type(3) > div:nth-of-type(2) time'
+        // Like button on maximized image
+        // Parent selImgDiv
+        this.sel.likeButton = ' svg[aria-label=\"Like\"][width=\"24\"]'
+        // Close button on maximized image
+        // Parent body
+        this.sel.closeButton = 'body svg[aria-label=\"Close\"]'
 
         // Sleep time between likes
         this.sleepMs = 30000
+
+        // Earliest datetime of last added post on a profile
+        this.lastImgDt = new Date(2021,3,1)
     }
 }
 
 
-const w = new LikePhotos(email='pedobip388@dghetian.com',
-                         password='V@9yx83$Rkwo*p',
+const w = new LikePhotos(email='xxx',
+                         password='yyy',
                          fileName='./data/mozaika',
-                         noProfiles=15,
+                         noProfiles=5,
                          likesPerProfile=1)
 w.Init()
