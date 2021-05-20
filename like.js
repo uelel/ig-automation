@@ -115,15 +115,60 @@ class LikePhotos extends Login {
     }
 
     /**
-     * Logic to like photos
+     * Check whether profile with given page contains like button that is checked
+     * @param {page object} page - with profile
+     * @return {bool} True in case like button exists and is checked, false otherwise
      */
-    async Like() {
+    async CheckLikeStatus(page) {
+        try {
+            const fill = await page.$eval(this.sel.selImgDiv+this.sel.likeButton,
+                                          el => el.getAttribute('fill'))
+            if (fill === this.likeButtonFill) return true
+            else return false
+        } catch (err) {
+            return false
+        }
+    }
+
+    /**
+     * Logic to apply likes
+     */
+    async ApplyLikes(page, imgArray) {
+        process.stdout.write(' .. ')
+        // Loop over likes
+        for (let j=0; j<Math.min(this.likesPerProfile, imgArray.length); j++) {
+            // Open image
+            await imgArray[j].click()
+            // Wait until like button appears
+            try {
+                await page.waitForSelector(this.sel.selImgDiv+this.sel.likeButton,
+                                           { visible: true,
+                                             timeout: 10000 })
+                if (!(await this.CheckLikeStatus(page))) {
+                    // Click like button
+                    await page.click(this.sel.selImgDiv+this.sel.likeButton)
+                    process.stdout.write((j+1)+' ')
+                }
+            } catch (err) { }
+            // Close image
+            await page.click(this.sel.closeButton)
+            // Sleep
+            await this.Sleep(this.sleepMs)
+        }
+        process.stdout.write('\n')
+    }
+
+    /**
+     * Logic to select profiles
+     */
+    async SelectProfiles() {
         await this.LoadProfiles()
         // Loop over profiles
         for (let i=0; i<this.noProfiles; i++) {
-            // Select and open profile
+            // Select profile
             var profileName = await this.SelectRandomItem(this.profileList)
-            //var profileName = 'kristina_nashe'
+            //var profileName = 'theshockingstops'
+            // Open new page
             process.stdout.write(profileName)
             var page = await this.OpenPage("https://www.instagram.com/"+profileName)
             // Check whether account is not empty
@@ -131,31 +176,8 @@ class LikePhotos extends Login {
                 var imgArray = await this.LoadImages(page)
                 // Check whether account is actual
                 if (await this.CheckActualProfile(page,imgArray)) {
-                    /*
-                    // Loop over likes
-                    for (let j=0; j<Math.min(this.likesPerProfile, imgArray.length); j++) {
-                        // Open image
-                        await imgArray[j].click()
-                        // Wait until like button appears
-                        try {
-                            await page.waitForSelector(await this.CSS(this.sel.selImgDiv,
-                                                                      ' ',
-                                                                      this.sel.likeButton),
-                                                       { visible: true,
-                                                         timeout: 10000 })
-                            // Click like button
-                            await page.click(await this.CSS(this.sel.selImgDiv,
-                                                            ' ',
-                                                            this.sel.likeButton))
-                            process.stdout.write(' .. done\n')
-                        } catch (err) {
-                            process.stdout.write(' .. like button was not found in page DOM\n')
-                            i = i-1
-                        }
-                        // Sleep
-                        await this.Sleep(this.sleepMs)
-                    }
-                    */
+                    // Apply likes
+                    await this.ApplyLikes(page,imgArray)
                 // Select new profile in case account is not actual
                 } else {
                     process.stdout.write(' .. profile is not actual\n')
@@ -166,6 +188,7 @@ class LikePhotos extends Login {
                 process.stdout.write(' .. profile is private\n')
                 i = i-1
             }
+            // Close page
             await page.close()
         }
     }
@@ -179,7 +202,7 @@ class LikePhotos extends Login {
                              this.fileName + '\"\n')
         process.stdout.write('Each selected profile receives '+this.likesPerProfile+' likes\n\n')
         process.stdout.write('Selected profiles:\n')
-        await this.Like()
+        await this.SelectProfiles()
 
         //await this.Close()
     }
@@ -228,6 +251,9 @@ class LikePhotos extends Login {
 
         // Earliest datetime of last added post on a profile
         this.lastImgDt = new Date(2021,3,1)
+
+        // Fill color of checked like button
+        this.likeButtonFill = '#ed4956'
     }
 }
 
@@ -235,6 +261,6 @@ class LikePhotos extends Login {
 const w = new LikePhotos(email='xxx',
                          password='yyy',
                          fileName='./data/mozaika',
-                         noProfiles=5,
-                         likesPerProfile=1)
+                         noProfiles=3,
+                         likesPerProfile=3)
 w.Init()
