@@ -62,7 +62,7 @@ class Login {
                                      'AppleWebKit/537.36 (KHTML, like Gecko) '+
                                      'Chrome/74.0.3729.169 Safari/537.36')
 
-        //await this.page.screenshot({ path: 'login.png' })
+        await this.page.screenshot({ path: 'login.png' })
         await this.AcceptCookies()
         await this.Login()
     }
@@ -95,11 +95,12 @@ class Login {
         // options for puppeteer.launch method
         this.chromeOptions = {
             headless: false,
+            devtools: false,
+            slowMo: 0,
             defaultViewport: {
                 width: 960,
                 height: 900
             },
-            slowMo: 0,
             args: []
         }
     }

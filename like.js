@@ -44,16 +44,6 @@ class LikePhotos extends Login {
         if (res) return true
         else return false
     }
-    
-    /**
-     * Search page DOM
-     * @param {page object}
-     * @return {array} Array with div elements containing images
-     */
-    async LoadImages(page) {
-        await this.Sleep(1000)
-        return await page.$$(this.sel.imagesDiv)
-    }
 
     /**
      * Combine given parent and child CSS selectors with given combinator
@@ -106,6 +96,8 @@ class LikePhotos extends Login {
                     return false
                 }
             } catch (err) {
+                console.log('could not determite actual profile')
+                console.log(err)
                 await page.click(this.sel.closeButton)
                 return false
             }
@@ -148,12 +140,12 @@ class LikePhotos extends Login {
                     // Click like button
                     await page.click(this.sel.selImgDiv+this.sel.likeButton)
                     process.stdout.write((j+1)+' ')
+                    // Sleep
+                    await this.Sleep(this.sleepMs)
                 }
             } catch (err) { }
             // Close image
             await page.click(this.sel.closeButton)
-            // Sleep
-            await this.Sleep(this.sleepMs)
         }
         process.stdout.write('\n')
     }
@@ -173,7 +165,8 @@ class LikePhotos extends Login {
             var page = await this.OpenPage("https://www.instagram.com/"+profileName)
             // Check whether account is not empty
             if (!(await this.CheckEmptyAccount(page))) {
-                var imgArray = await this.LoadImages(page)
+                await this.Sleep(1000)
+                const imgArray =  await page.$$(this.sel.imagesDiv)
                 // Check whether account is actual
                 if (await this.CheckActualProfile(page,imgArray)) {
                     // Apply likes
@@ -204,7 +197,7 @@ class LikePhotos extends Login {
         process.stdout.write('Selected profiles:\n')
         await this.SelectProfiles()
 
-        //await this.Close()
+        await this.Close()
     }
 
     /**
@@ -247,7 +240,7 @@ class LikePhotos extends Login {
         this.sel.closeButton = 'body svg[aria-label=\"Close\"]'
 
         // Sleep time between likes
-        this.sleepMs = 30000
+        this.sleepMs = 20000
 
         // Earliest datetime of last added post on a profile
         this.lastImgDt = new Date(2021,3,1)
@@ -260,7 +253,7 @@ class LikePhotos extends Login {
 
 const w = new LikePhotos(email='xxx',
                          password='yyy',
-                         fileName='./data/mozaika',
-                         noProfiles=3,
+                         fileName='./data/test',
+                         noProfiles=30,
                          likesPerProfile=3)
 w.Init()
