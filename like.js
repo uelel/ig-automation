@@ -9,21 +9,6 @@ const Login = require('./login.js')
 class LikePhotos extends Login {
 
     /**
-     * Load profiles from file into array
-     */
-    async LoadProfiles() {
-        try {
-            const data = await fs.promises.readFile(this.fileName,
-                                                    { encoding: 'utf-8',
-                                                      flag: 'r' })
-            this.profileList = await data.toString().split("\n")
-        } catch (err) {
-            throw new Error("Profiles could not be loaded from file "+this.fileName+"\n",
-                            err)
-        }
-    }
-
-    /**
      * Select random item from given array
      * @param {array}
      * @param {int} - if given, only first N items of array are processed
@@ -154,7 +139,7 @@ class LikePhotos extends Login {
      * Logic to select profiles
      */
     async SelectProfiles() {
-        await this.LoadProfiles()
+        this.profileList = await this.LoadFileRows(this.fileName)
         // Loop over profiles
         for (let i=0; i<this.noProfiles; i++) {
             // Select profile
@@ -203,19 +188,19 @@ class LikePhotos extends Login {
     /**
      * Like photos of given Instagram profiles
      *
-     * @param {str} email - email to use for login into Instagram
-     * @param {str} password - password to use for login into Instagram
+     * @param {str} login - file with login data to log into Instagram
      * @param {str} fileName - file name with list of valid profiles
      * @param {number} noProfiles - how many profiles should be liked
      * @param {number} likesPerProfile - how many first photos to like per profile
+     * @param {str} proxy - file with proxy settings (optional)
      */
-    constructor(email,
-                password,
+    constructor(login,
+                proxy,
                 fileName,
                 noProfiles,
                 likesPerProfile) {
 
-        super(email, password)
+        super(login, proxy)
         
         this.fileName = fileName
         this.noProfiles = noProfiles
@@ -251,9 +236,9 @@ class LikePhotos extends Login {
 }
 
 
-const w = new LikePhotos(email='xxx',
-                         password='yyy',
-                         fileName='./data/test',
-                         noProfiles=30,
+const w = new LikePhotos(login='./data/login-vkusov',
+                         proxy=null,
+                         fileName='./data/klubnika.prg',
+                         noProfiles=15,
                          likesPerProfile=3)
 w.Init()

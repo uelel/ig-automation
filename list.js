@@ -118,17 +118,18 @@ class FollowersList extends Login {
             const profileName = await this.page.evaluate(el => el.getAttribute('href'), a)
             // Open profile in new tab
             const page = await this.OpenPage("https://www.instagram.com"+profileName)
-            // Check whther account is not empty
+            // Check whether account is not empty
             if (!(await this.CheckEmptyAccount(page))) {
                 if (await this.CheckActualAccount(page)) {
                     await this.WriteToFile(profileName)
+                }
             //} else { 
-            //    //await page.evaluate(() => { debugger })
-            //    //console.log('empty profile')
+                // await this.Debug(page,'empty profile')
             }
             await page.close()
         } else {
-            throw new Error("Profile name could not be found in given handle!\n")
+            //throw new Error("Profile name could not be found in given handle!\n")
+            console.log('Profile name could not be found in given handle!')
         }
         this.PrintProgress() 
         this.folIter += 1
@@ -224,19 +225,19 @@ class FollowersList extends Login {
      * Download only profiles that have open account (not private)
      * Download only profiles that have actual posts
      *
-     * @param {str} email - email to use for login into Instagram
-     * @param {str} password - password to use for login into Instagram
+     * @param {str} login - file with login data to log into Instagram
      * @param {str} profile - profile name to download followers from
      * @param {number} startFrom - first follower to download
      * @param {str} fileName - file name to save resulting list
+     * @param {str} proxy - file with proxy settings (optional)
      */
-    constructor(email,
-                password,
+    constructor(login,
+                proxy,
                 profile,
                 startFrom,
                 fileName) {
 
-        super(email, password)
+        super(login, proxy)
         
         this.profile = profile
         this.startFrom = startFrom
@@ -274,11 +275,10 @@ class FollowersList extends Login {
     }
 }
 
-
-// 197
-const w = new FollowersList(email='xxx',
-                            password='yyy',
-                            profile='profileName',
-                            startFrom=0,
-                            fileName='./data/test')
+// 2043
+const w = new FollowersList(login='./data/login1',
+                            proxy='./data/proxy',
+                            profile='klubnika.prg',
+                            startFrom=2043,
+                            fileName='./data/klubnika.prg')
 w.Init()

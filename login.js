@@ -1,3 +1,4 @@
+const fs = require('fs')
 const process = require('process')
 const puppeteer = require('puppeteer')
 
@@ -10,6 +11,15 @@ class Login {
      */
     async OpenPage(url) {
         const page = await this.browser.newPage()
+        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) '+
+                                'AppleWebKit/537.36 (KHTML, like Gecko) '+
+                                'Chrome/74.0.3729.169 Safari/537.36')
+        if (this.proxy) {
+            await page.authenticate({
+                username: this.proxyUser,
+                password: this.proxyPwd
+            })
+        }
         await page.goto(url, { waitUntil: 'networkidle0' })
         return page
     }
@@ -22,6 +32,32 @@ class Login {
        return new Promise((res) => { 
            setTimeout(res, ms)
        })
+    }
+
+    async Close() {
+        await this.browser.close()
+    }
+
+    async Debug(page, message) {
+        await page.evaluate(() => { debugger })
+        console.log(message)
+    }
+   
+    /**
+     * Load file with given filename into array with rows
+     * @param {str} fileName
+     * @return {array} array with loaded rows
+     */
+    async LoadFileRows(fileName) {
+        try {
+            const data = await fs.promises.readFile(fileName,
+                                                    { encoding: 'utf-8',
+                                                      flag: 'r' })
+            return await data.toString().split("\n")
+        } catch (err) {
+            throw new Error("Data could not be loaded from file "+fileName+"\n",
+                            err)
+        }
     }
 
     /**
@@ -52,37 +88,47 @@ class Login {
     }
 
     async Init() {
+
+        // Load login data
+        [ this.email,
+          this.pwd ] = await this.LoadFileRows(this.login)
+
+        // Load proxy settings if needed
+        if (this.proxy) {
+            process.stdout.write('Using proxy server from : '+this.proxy+'\n')
+            [ this.proxyServer,
+              this.proxyUser,
+              this.proxyPwd ] = await this.LoadFileRows(this.proxy)
+            this.chromeOptions.args.push('--proxy-server='+this.proxyServer)
+        } else {
+            this.chromeOptions.args.push('--no-proxy-server')
+        }
+        
         // Start browser
         this.browser = await puppeteer.launch(this.chromeOptions)
 
         process.stdout.write('Login to Instagram as : '+this.email+'\n')
-        
         this.page = await this.OpenPage('https://www.instagram.com/accounts/login/')
-        await this.page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) '+
-                                     'AppleWebKit/537.36 (KHTML, like Gecko) '+
-                                     'Chrome/74.0.3729.169 Safari/537.36')
-
-        await this.page.screenshot({ path: 'login.png' })
+        
+        //this.Debug(this.page,'')
+        //await this.page.screenshot({ path: 'login.png' })
         await this.AcceptCookies()
         await this.Login()
     }
 
-    async Close() {
-        await this.browser.close()
-    }
 
     /**
      * Launch Puppeteer
      * Login to Instagram with given account
      *
-     * @param {str} email - email to use for login into Instagram
-     * @param {str} password - password to use for login into Instagram
+     * @param {str} login - file with login data to log into Instagram
+     * @param {str} proxy - file with proxy settings (optional)
      */
-    constructor(email,
-                password) {
+    constructor(login,
+                proxy) {
 
-        this.email = email
-        this.pwd = password
+        this.login = login
+        this.proxy = proxy
 
         // DOM selectors
         this.sel = {
@@ -101,9 +147,9 @@ class Login {
                 width: 960,
                 height: 900
             },
-            args: []
+            args: [ ]
         }
     }
-}
+}    
 
 module.exports = Login
