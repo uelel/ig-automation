@@ -6,7 +6,7 @@ const { ArgumentParser } = require('argparse')
 const Login = require('./login.js')
 
 
-class FollowersList extends Login {
+class List extends Login {
 
   /**
    * Parse given string number to float
@@ -262,11 +262,4 @@ class FollowersList extends Login {
   }
 }
 
-// 2043
-const w = new FollowersList(login='./data/login1',
-                            cookies=null,
-                            proxy='./data/proxy',
-                            profile='klubnika.prg',
-                            startFrom=2043,
-                            fileName='./data/klubnika.prg')
-w.Init()
+module.exports = List

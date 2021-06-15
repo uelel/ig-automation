@@ -6,7 +6,7 @@ const { ArgumentParser } = require('argparse')
 const Login = require('./login.js')
 
 
-class LikePhotos extends Login {
+class Like extends Login {
 
   /**
    * Select random item from given array
@@ -127,8 +127,12 @@ class LikePhotos extends Login {
           process.stdout.write((j+1)+' ')
           // Sleep
           await this.Sleep(this.sleepMs)
+        } else {
+          process.stdout.write('already liked ')
         }
-      } catch (err) { }
+      } catch (err) {
+        process.stdout.write('error occured ')
+      }
       // Close image
       await page.click(this.sel.closeButton)
     }
@@ -144,7 +148,7 @@ class LikePhotos extends Login {
     for (let i=0; i<this.noProfiles; i++) {
       // Select profile
       var profileName = await this.SelectRandomItem(this.profileList)
-      //var profileName = 'theshockingstops'
+      //var profileName = 'richard_official16'
       // Open new page
       process.stdout.write(profileName)
       var page = await this.OpenPage("https://www.instagram.com/"+profileName)
@@ -221,7 +225,7 @@ class LikePhotos extends Login {
     this.sel.imgDateTime = ' > div:nth-of-type(3) > div:nth-of-type(2) time'
     // Like button on maximized image
     // Parent selImgDiv
-    this.sel.likeButton = ' svg[aria-label=\"Like\"][width=\"24\"]'
+    this.sel.likeButton = ' svg[aria-label=\"Like\"][width=\"24\"],svg[aria-label=\"Unlike\"][width=\"24\"]'
     // Close button on maximized image
     // Parent body
     this.sel.closeButton = 'body svg[aria-label=\"Close\"]'
@@ -237,11 +241,4 @@ class LikePhotos extends Login {
   }
 }
 
-
-const w = new LikePhotos(login='./data/vkusov-login',
-                         cookies='./data/vkusov-cookies.json',
-                         proxy=null,
-                         fileName='./data/klubnika.prg',
-                         noProfiles=1,
-                         likesPerProfile=3)
-w.Init()
+module.exports = Like

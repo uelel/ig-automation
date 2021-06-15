@@ -104,7 +104,7 @@ class Login extends Helper {
     try {
       await page.waitForXPath(this.sel.acceptCookiesButton,
                               { visible: true,
-                                timeout: 30000 })
+                                timeout: 10000 })
       await page.evaluate(el => el.click(),
         (await page.$x(this.sel.acceptCookiesButton))[0])
       await page.waitForNavigation({ waitUntil: 'networkidle0' })
@@ -156,7 +156,7 @@ class Login extends Helper {
 
     // Load proxy settings if given
     if (this.proxy) {
-      process.stdout.write('Using proxy server from : '+this.proxy+'\n')
+      process.stdout.write('Using proxy server from : '+this.proxy+'\n');
       [ this.proxyServer,
         this.proxyUser,
         this.proxyPwd ] = await this.LoadFileRows(this.proxy)
@@ -228,7 +228,7 @@ class Login extends Helper {
     // Options for puppeteer.launch method
     this.chromeOptions = {
       headless: false,
-      devtools: true,
+      devtools: false,
       slowMo: 0,
       defaultViewport: {
           width: 960,
