@@ -11,7 +11,7 @@ if (process.argv[2] === 'like') {
                      likesPerProfile=1)
   w.Init()
 
-} else if (process.argv[2] === 'like') {
+} else if (process.argv[2] === 'list') {
   // cokoladovnajanek 1570
   const w = new List(login='./data/login4',
                      cookies=null,
