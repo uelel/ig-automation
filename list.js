@@ -57,7 +57,7 @@ class List extends Login {
       // Wait for time element to appear
       await page.waitForSelector(this.sel.selImgDiv+this.sel.imgDateTime,
                                  { visible: true,
-                                   timeout: 10000 })
+                                   timeout: 30000 })
       // Get datetime attribute
       try {
         const dt = await page.$eval(this.sel.selImgDiv+this.sel.imgDateTime,
@@ -82,6 +82,20 @@ class List extends Login {
   }
 
   /**
+   * Check whether given page with Instagram account is fully loaded
+   * @param {page object} page
+   */
+  async CheckAccessToProfile(page) {
+    try {
+      await page.waitForSelector(this.sel.profileHeader,
+                                 { timeout: 10000 })
+    } catch (err) {
+      throw new Error("User has no access to Instagram profile! "+
+                      "Perhaps user was banned?\n", err)
+    }
+  }
+
+  /**
    * Print progress to stdout
    */
   PrintProgress() {
@@ -94,7 +108,7 @@ class List extends Login {
    * Get Instagram account from given li element handle
    * Open account in new tab
    * Check whether account is private or not
-   * @param{element handle} li - li element of given row
+   * @param {element handle} li - li element of given row
    */
   async ProcessAccount(li) {
     const a = await li.$(" a")
@@ -103,6 +117,8 @@ class List extends Login {
       const profileName = await this.page.evaluate(el => el.getAttribute('href'), a)
       // Open profile in new tab
       const page = await this.OpenPage("https://www.instagram.com"+profileName)
+      // Check access to profile
+      await this.CheckAccessToProfile(page)
       // Check whether account is not empty
       if (!(await this.CheckEmptyAccount(page))) {
         if (await this.CheckActualAccount(page)) {
@@ -139,6 +155,7 @@ class List extends Login {
       // Process new rows
       while (this.folIter < rows.length-1) {
         await this.ProcessAccount(rows[this.folIter])
+        await this.Sleep(3000)
       }
       // Scroll down the list in case all rows are processed
       await this.page.evaluate(
@@ -171,10 +188,15 @@ class List extends Login {
 
     // Load profile page
     await this.page.goto('https://www.instagram.com/'+this.profile,
-                         { waitUntil: 'networkidle0' })
+                         { waitUntil: 'networkidle0',
+                           timeout: 30000 })
+    
+    // Check access to profile
+    //await this.Debug(this.page)
+    await this.CheckAccessToProfile(this.page)
 
     // Get number of followers
-    this.totalFol = await this.page.$eval(this.sel.followersButton,
+    this.totalFol = await this.page.$eval(this.sel.profileHeader+this.sel.followersButton,
                                           el => { return el.innerHTML })
                     .catch(err => { 
                         throw new Error("Followers button was not found:\n", err)
@@ -183,7 +205,7 @@ class List extends Login {
     //console.log(this.totalFol)
 
     // Open dialog with followers
-    await this.page.$eval(this.sel.followersButton,
+    await this.page.$eval(this.sel.profileHeader+this.sel.followersButton,
                           el => el.click())
     try {
       await this.page.waitForSelector(this.sel.followersDiv+" ul",
@@ -232,9 +254,12 @@ class List extends Login {
 
 
     // DOM selectors
-    // Followers button on profile page
+    // profile header with logo,name etc.
     // Parent body
-    this.sel.followersButton = '#react-root > section > main > div > header > section > ul > li:nth-child(2) > a > span'
+    this.sel.profileHeader = '#react-root section main header'
+    // Followers button on profile page
+    // Parent profileHeader
+    this.sel.followersButton = ' > section > ul > li:nth-child(2) > a > span'
     // Div with opened list of followers
     // Parent body
     this.sel.followersDiv = "div[role=dialog] > div > div:nth-of-type(2)"

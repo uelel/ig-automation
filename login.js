@@ -77,6 +77,22 @@ class Login extends Helper {
   }
 
   /**
+   * Wrapper around page.goto that catches errors
+   * @param {page object} page
+   * @param {str} url
+   * @return {response object}
+  */
+  async GoTo(page, url) {
+    try {
+      const res = await page.goto(url, { waitUntil: 'networkidle0',
+                                         timeout: 30000 })
+      return res
+    } catch (err) {
+      return false
+    }
+  }
+
+  /**
    * Open page in new tab
    * Insert cookies to created page from this.CookiesArray
    * @param {str} url
@@ -87,7 +103,15 @@ class Login extends Helper {
     const page = await this.NewPage()
     //console.log((await page.goto(url, { waitUntil: 'networkidle0' })).request().headers())
     // Load URL
-    const res = await page.goto(url, { waitUntil: 'networkidle0' })
+    var res = false
+    var noLoad = 0
+    while (res === false && noLoad < 5) {
+      res = await this.GoTo(page, url)
+      noLoad += 1
+      if (res === false) {
+        await this.Sleep(3000)
+      }
+    }
     // Add cookies to page from this.CookiesArray
     // Instagram.com must be opened in order to add new cookies
     if (this.CookiesArray.length > 0) {
@@ -107,7 +131,7 @@ class Login extends Helper {
                                 timeout: 10000 })
       await page.evaluate(el => el.click(),
         (await page.$x(this.sel.acceptCookiesButton))[0])
-      await page.waitForNavigation({ waitUntil: 'networkidle0' })
+      //await page.waitForNavigation({ waitUntil: 'networkidle0' })
     } catch (err) {
       process.stdout.write('Accept-cookies button was not found\n')
     }

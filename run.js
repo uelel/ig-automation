@@ -1,21 +1,26 @@
+const process = require('process')
 const Like = require('./like.js')
 const List = require('./list.js')
 
-const w = new Like(login='./data/login1',
-                   cookies=null,
-                   proxy='./data/proxy',
-                   fileName='./data/klubnika.prg',
-                   noProfiles=1,
-                   likesPerProfile=1)
+if (process.argv[2] === 'like') {
+  const w = new Like(login='./data/vkusov-login',
+                     cookies='./data/vkusov-cookies.json',
+                     proxy=null,
+                     fileName='./data/cokoladovnajanek',
+                     noProfiles=20,
+                     likesPerProfile=1)
+  w.Init()
 
-/*
-// 2043
-const w = new List(login='./data/login1',
-                   cookies=null,
-                   proxy='./data/proxy',
-                   profile='klubnika.prg',
-                   startFrom=2043,
-                   fileName='./data/klubnika.prg')
-*/
+} else if (process.argv[2] === 'like') {
+  // cokoladovnajanek 1570
+  const w = new List(login='./data/login4',
+                     cookies=null,
+                     proxy='./data/proxy',
+                     profile='cokoladovnajanek',
+                     startFrom=1570,
+                     fileName='./data/cokoladovnajanek')
+  w.Init()
 
-w.Init()
+} else {
+  process.stdout.write('Unknown parameter '+process.argv[2]+'\n')
+}
